@@ -1,0 +1,54 @@
+-- [[ FPS BOOSTER SYSTEM ]]
+local Booster = {}
+
+function Booster.Activate()
+    local Lighting = game:GetService("Lighting")
+    local Terrain = workspace:FindFirstChildOfClass("Terrain")
+
+    -- 1. ตั้งค่ากราฟิกพื้นฐานให้ต่ำที่สุด
+    settings().Rendering.QualityLevel = 1
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    if Terrain then
+        Terrain.WaterWaveSize = 0
+        Terrain.WaterWaveSpeed = 0
+        Terrain.WaterReflectance = 0
+        Terrain.WaterTransparency = 0
+    end
+
+    -- 2. ฟังก์ชันทำความสะอาด Object ที่กินทรัพยากร
+    local function CleanObject(v)
+        if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") then
+            v.Enabled = false
+        elseif v:IsA("Explosion") then
+            v.Visible = false
+            v.BlastRadius = 0
+        elseif v:IsA("Decal") or v:IsA("Texture") then
+            v:Destroy()
+        elseif v:IsA("PostEffect") then -- พวก Blur, Bloom, ColorCorrection
+            v.Enabled = false
+        end
+    end
+
+    -- ล้างของเก่าที่มีอยู่ในแมพ
+    for _, v in pairs(workspace:GetDescendants()) do
+        CleanObject(v)
+    end
+
+    -- ดักจับของใหม่ที่เกิดขึ้น (เช่น เอฟเฟกต์ฟันดาบ/ระเบิด)
+    workspace.DescendantAdded:Connect(function(v)
+        task.wait() -- รอให้ Object โหลดเสร็จนิดนึง
+        CleanObject(v)
+    end)
+
+    print("FPS Booster Activated!")
+end
+
+-- ระบบ "โหมดประหยัดพลังงาน" (จอขาว/ปิดการเรนเดอร์ 3D)
+-- ใช้สำหรับเปิดบอททิ้งไว้นานๆ โดยที่คอมไม่ร้อน
+function Booster.SetRenderEnabled(state)
+    game:GetService("RunService"):Set3dRenderingEnabled(state)
+end
+
+return Booster
+
