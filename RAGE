@@ -1,18 +1,9 @@
--- [[ RAGE MODULE (EXTERNAL RAW) ]]
+-- [[ RAGE MODULE (EXTERNAL RAW) - UPDATE ]]
 local Module = {}
 
 function Module.Start(Settings)
     local lp = game:GetService("Players").LocalPlayer
     
-    -- ลบ Effects อัตโนมัติ (ลดแล็ก)
-    task.spawn(function()
-        local fx = workspace:FindFirstChild("Effects")
-        if fx then
-            fx:ClearAllChildren()
-            fx.ChildAdded:Connect(function(child) task.wait() child:Destroy() end)
-        end
-    end)
-
     local function useSkill(key)
         local ctrl = lp.Character and lp.Character:FindFirstChild("client_character_controller")
         if ctrl and ctrl:FindFirstChild("Skill") then
@@ -25,24 +16,27 @@ function Module.Start(Settings)
     task.spawn(function()
         while true do
             if Settings.RageMode then
-                local char = lp.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                local hum = char and char:FindFirstChild("Humanoid")
-
-                if hrp and hum and hum.Health > 0 then
+                pcall(function()
+                    local char = lp.Character
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                    local hum = char:FindFirstChild("Humanoid")
+                    
                     for _, target in pairs(workspace.Live:GetChildren()) do
                         if not Settings.RageMode then break end
                         
                         local tHum = target:FindFirstChild("Humanoid")
                         local tHrp = target:FindFirstChild("HumanoidRootPart")
 
+                        -- เช็คว่าเป็นมอนสเตอร์และยังมีชีวิต
                         if tHum and tHum.Health > 0 and tHrp and target.Name ~= lp.Name then
-                            -- ลูปฆ่ารายตัว
+                            
+                            -- [[ ตีตายก่อนค่อยย้าย ]]
                             while Settings.RageMode and target.Parent and tHum.Health > 0 and hum.Health > 0 do
+                                -- [[ วาร์ปใต้เท้า (Underground) ]]
                                 hrp.CFrame = tHrp.CFrame * CFrame.new(0, -5.5, 0) * CFrame.Angles(math.rad(90), 0, 0)
                                 hrp.Velocity = Vector3.zero
                                 
-                                -- Magnet: ดึงมอนรอบๆ 50 Studs
+                                -- Magnet 50 Studs
                                 for _, nearby in pairs(workspace.Live:GetChildren()) do
                                     if nearby ~= target and nearby:FindFirstChild("HumanoidRootPart") then
                                         local nHum = nearby:FindFirstChild("Humanoid")
@@ -66,9 +60,10 @@ function Module.Start(Settings)
                                 end
                                 task.wait(0.05)
                             end
+                            -- พอมันตายสนิท (หลุดลูป while) ถึงจะขยับไปตัวถัดไปใน loop for
                         end
                     end
-                end
+                end)
             end
             task.wait(1)
         end
@@ -76,4 +71,3 @@ function Module.Start(Settings)
 end
 
 return Module
-
