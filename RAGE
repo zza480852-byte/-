@@ -1,0 +1,79 @@
+-- [[ RAGE MODULE (EXTERNAL RAW) ]]
+local Module = {}
+
+function Module.Start(Settings)
+    local lp = game:GetService("Players").LocalPlayer
+    
+    -- ลบ Effects อัตโนมัติ (ลดแล็ก)
+    task.spawn(function()
+        local fx = workspace:FindFirstChild("Effects")
+        if fx then
+            fx:ClearAllChildren()
+            fx.ChildAdded:Connect(function(child) task.wait() child:Destroy() end)
+        end
+    end)
+
+    local function useSkill(key)
+        local ctrl = lp.Character and lp.Character:FindFirstChild("client_character_controller")
+        if ctrl and ctrl:FindFirstChild("Skill") then
+            ctrl.Skill:FireServer(key, true)
+            task.wait(0.01)
+            ctrl.Skill:FireServer(key, false)
+        end
+    end
+
+    task.spawn(function()
+        while true do
+            if Settings.RageMode then
+                local char = lp.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local hum = char and char:FindFirstChild("Humanoid")
+
+                if hrp and hum and hum.Health > 0 then
+                    for _, target in pairs(workspace.Live:GetChildren()) do
+                        if not Settings.RageMode then break end
+                        
+                        local tHum = target:FindFirstChild("Humanoid")
+                        local tHrp = target:FindFirstChild("HumanoidRootPart")
+
+                        if tHum and tHum.Health > 0 and tHrp and target.Name ~= lp.Name then
+                            -- ลูปฆ่ารายตัว
+                            while Settings.RageMode and target.Parent and tHum.Health > 0 and hum.Health > 0 do
+                                hrp.CFrame = tHrp.CFrame * CFrame.new(0, -5.5, 0) * CFrame.Angles(math.rad(90), 0, 0)
+                                hrp.Velocity = Vector3.zero
+                                
+                                -- Magnet: ดึงมอนรอบๆ 50 Studs
+                                for _, nearby in pairs(workspace.Live:GetChildren()) do
+                                    if nearby ~= target and nearby:FindFirstChild("HumanoidRootPart") then
+                                        local nHum = nearby:FindFirstChild("Humanoid")
+                                        if nHum and nHum.Health > 0 and (tHrp.Position - nearby.HumanoidRootPart.Position).Magnitude <= 50 then
+                                            nearby.HumanoidRootPart.CFrame = tHrp.CFrame
+                                        end
+                                    end
+                                end
+
+                                -- Attack
+                                local ctrl = char:FindFirstChild("client_character_controller")
+                                if ctrl then
+                                    if ctrl:FindFirstChild("M1") then ctrl.M1:FireServer(true, true) end
+                                    if ctrl:FindFirstChild("M2") then ctrl.M2:FireServer(true, false) end
+                                end
+                                for _, k in pairs({"E","R","Z","X","C","V"}) do useSkill(k) end
+                                
+                                -- NoClip
+                                for _, p in pairs(char:GetDescendants()) do
+                                    if p:IsA("BasePart") then p.CanCollide = false end
+                                end
+                                task.wait(0.05)
+                            end
+                        end
+                    end
+                end
+            end
+            task.wait(1)
+        end
+    end)
+end
+
+return Module
+
