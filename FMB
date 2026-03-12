@@ -1,0 +1,78 @@
+-- [[ FARMING MODULE (EXTERNAL RAW) ]]
+local Module = {}
+
+function Module.Init(Settings, MonsterList)
+    local lp = game:GetService("Players").LocalPlayer
+    local targetFolder = workspace:WaitForChild("Live", 10)
+
+    -- ฟังก์ชันค้นหาเป้าหมาย
+    local function findTarget()
+        if not targetFolder then return nil end
+        for _, v in pairs(targetFolder:GetChildren()) do
+            local hum = v:FindFirstChild("Humanoid")
+            if hum and hum.Health > 0 then
+                for name, enabled in pairs(Settings.SelectedTargets) do
+                    if enabled and string.find(v.Name, name, 1, true) then
+                        return v 
+                    end
+                end
+            end
+        end
+        return nil
+    end
+
+    -- ฟังก์ชันคำนวณตำแหน่ง
+    local function getRelativeCFrame(targetHrp)
+        local mode = Settings.TrackingMode
+        local dist = Settings.FollowDistance
+        if mode == "Underground" then
+            return targetHrp.CFrame * CFrame.new(0, -dist, 0) * CFrame.Angles(math.rad(90), 0, 0)
+        elseif mode == "Overhead" then
+            return targetHrp.CFrame * CFrame.new(0, dist, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+        elseif mode == "Behind" then
+            return targetHrp.CFrame * CFrame.new(0, 0, dist) 
+        end
+        return targetHrp.CFrame
+    end
+
+    -- ลูปการล่า
+    task.spawn(function()
+        while true do
+            if Settings.IsRunning then
+                local char = lp.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local hum = char and char:FindFirstChild("Humanoid")
+                
+                if hrp and hum and hum.Health > 0 then
+                    local target = findTarget()
+                    if target then
+                        local tHrp = target:FindFirstChild("HumanoidRootPart")
+                        local tHum = target:FindFirstChild("Humanoid")
+                        while Settings.IsRunning and target.Parent and tHum and tHum.Health > 0 and hum.Health > 0 do
+                            hrp.CFrame = getRelativeCFrame(tHrp)
+                            hrp.Velocity = Vector3.new(0,0,0) 
+                            local ctrl = char:FindFirstChild("client_character_controller")
+                            if ctrl and ctrl:FindFirstChild("M1") then
+                                ctrl.M1:FireServer(true, true)
+                            end
+                            task.wait(0.1)
+                        end
+                    end
+                end
+            end
+            task.wait(0.5)
+        end
+    end)
+
+    -- ระบบ NoClip
+    game:GetService("RunService").Stepped:Connect(function()
+        if Settings.IsRunning and lp.Character then
+            for _, v in pairs(lp.Character:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = false end
+            end
+        end
+    end)
+end
+
+return Module
+
