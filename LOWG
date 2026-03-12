@@ -1,14 +1,31 @@
--- [[ FPS BOOSTER SYSTEM ]]
-local Booster = {}
+-- [[ LOW GRAPHICS & ANTI-TREE SYSTEM ]]
+local LOWG = {}
 
-function Booster.Activate()
+function LOWG.Activate()
     local Lighting = game:GetService("Lighting")
     local Terrain = workspace:FindFirstChildOfClass("Terrain")
 
-    -- 1. ตั้งค่ากราฟิกพื้นฐานให้ต่ำที่สุด
+    -- 1. ลบต้นไม้ (สแกนหาคำว่า Tree)
+    for _, v in pairs(workspace:GetDescendants()) do
+        if string.find(v.Name, "Tree") or string.find(v.Name, "tree") then
+            v:Destroy()
+        end
+    end
+
+    -- 2. ปรับ Material ให้ลื่นที่สุด (SmoothPlastic)
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") or v:IsA("MeshPart") or v:IsA("Part") then
+            v.Material = Enum.Material.SmoothPlastic
+            v.CastShadow = false -- ปิดเงาเฉพาะชิ้นส่วน
+        end
+    end
+
+    -- 3. ตั้งค่าแสงและสภาพแวดล้อม
     settings().Rendering.QualityLevel = 1
     Lighting.GlobalShadows = false
     Lighting.FogEnd = 9e9
+    Lighting.Brightness = 2 -- เพิ่มความสว่างมาชดเชยเงาที่หายไป
+    
     if Terrain then
         Terrain.WaterWaveSize = 0
         Terrain.WaterWaveSpeed = 0
@@ -16,39 +33,15 @@ function Booster.Activate()
         Terrain.WaterTransparency = 0
     end
 
-    -- 2. ฟังก์ชันทำความสะอาด Object ที่กินทรัพยากร
-    local function CleanObject(v)
-        if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") then
-            v.Enabled = false
-        elseif v:IsA("Explosion") then
-            v.Visible = false
-            v.BlastRadius = 0
-        elseif v:IsA("Decal") or v:IsA("Texture") then
-            v:Destroy()
-        elseif v:IsA("PostEffect") then -- พวก Blur, Bloom, ColorCorrection
-            v.Enabled = false
-        end
-    end
-
-    -- ล้างของเก่าที่มีอยู่ในแมพ
-    for _, v in pairs(workspace:GetDescendants()) do
-        CleanObject(v)
-    end
-
-    -- ดักจับของใหม่ที่เกิดขึ้น (เช่น เอฟเฟกต์ฟันดาบ/ระเบิด)
+    -- 4. ระบบลบเอฟเฟกต์ (กันเหนี่ยวไว้ด้วย)
     workspace.DescendantAdded:Connect(function(v)
-        task.wait() -- รอให้ Object โหลดเสร็จนิดนึง
-        CleanObject(v)
+        if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Explosion") then
+            task.wait()
+            v:Destroy()
+        end
     end)
 
-    print("FPS Booster Activated!")
+    print("Extreme Low Graphics & Anti-Tree Activated!")
 end
 
--- ระบบ "โหมดประหยัดพลังงาน" (จอขาว/ปิดการเรนเดอร์ 3D)
--- ใช้สำหรับเปิดบอททิ้งไว้นานๆ โดยที่คอมไม่ร้อน
-function Booster.SetRenderEnabled(state)
-    game:GetService("RunService"):Set3dRenderingEnabled(state)
-end
-
-return Booster
-
+return LOWG
