@@ -1,11 +1,15 @@
--- [[ FARMING MODULE (EXTERNAL RAW) ]]
+-- [[ FARMING MODULE (COMBAT V2) ]]
 local Module = {}
 
 function Module.Init(Settings, MonsterList)
     local lp = game:GetService("Players").LocalPlayer
     local targetFolder = workspace:WaitForChild("Live", 10)
+    
+    -- ตั้งค่าเวลาเริ่มต้นสำหรับสกิล
+    local lastSkillCycle = 0
 
-    -- ฟังก์ชันค้นหาเป้าหมาย
+    -- [[ Internal Functions ]]
+    
     local function findTarget()
         if not targetFolder then return nil end
         for _, v in pairs(targetFolder:GetChildren()) do
@@ -21,7 +25,6 @@ function Module.Init(Settings, MonsterList)
         return nil
     end
 
-    -- ฟังก์ชันคำนวณตำแหน่ง
     local function getRelativeCFrame(targetHrp)
         local mode = Settings.TrackingMode
         local dist = Settings.FollowDistance
@@ -35,7 +38,18 @@ function Module.Init(Settings, MonsterList)
         return targetHrp.CFrame
     end
 
-    -- ลูปการล่า
+    local function useSkill(key)
+        local char = lp.Character
+        local ctrl = char and char:FindFirstChild("client_character_controller")
+        local remote = ctrl and ctrl:FindFirstChild("Skill")
+        if remote then
+            remote:FireServer(key, true)
+            task.wait(0.05)
+            remote:FireServer(key, false)
+        end
+    end
+
+    -- [[ Main Farming Loop ]]
     task.spawn(function()
         while true do
             if Settings.IsRunning then
@@ -48,14 +62,40 @@ function Module.Init(Settings, MonsterList)
                     if target then
                         local tHrp = target:FindFirstChild("HumanoidRootPart")
                         local tHum = target:FindFirstChild("Humanoid")
+                        
                         while Settings.IsRunning and target.Parent and tHum and tHum.Health > 0 and hum.Health > 0 do
+                            -- 1. การเคลื่อนที่
                             hrp.CFrame = getRelativeCFrame(tHrp)
-                            hrp.Velocity = Vector3.new(0,0,0) 
+                            hrp.Velocity = Vector3.zero 
+
+                            -- 2. ระบบโจมตีสลับ M1 และ M2
                             local ctrl = char:FindFirstChild("client_character_controller")
-                            if ctrl and ctrl:FindFirstChild("M1") then
-                                ctrl.M1:FireServer(true, true)
+                            if ctrl then
+                                if ctrl:FindFirstChild("M1") then
+                                    ctrl.M1:FireServer(true, true)
+                                end
+                                task.wait(0.05) -- ตี M1
+                                
+                                if ctrl:FindFirstChild("M2") then
+                                    ctrl.M2:FireServer(true, false)
+                                end
                             end
-                            task.wait(0.1)
+
+                            -- 3. ระบบวน Skill ทุกๆ 7 วินาที
+                            if tick() - lastSkillCycle >= 7 then
+                                -- วนลูปเช็คสกิลที่เลือกไว้ใน Settings.ActiveSkills
+                                if Settings.ActiveSkills then
+                                    for key, isEnabled in pairs(Settings.ActiveSkills) do
+                                        if isEnabled then
+                                            useSkill(key)
+                                            task.wait(0.1) -- เว้นระยะระหว่างท่าเล็กน้อย
+                                        end
+                                    end
+                                end
+                                lastSkillCycle = tick()
+                            end
+                            
+                            task.wait(0.05)
                         end
                     end
                 end
@@ -75,4 +115,3 @@ function Module.Init(Settings, MonsterList)
 end
 
 return Module
-
